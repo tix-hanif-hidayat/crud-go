@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -19,8 +20,14 @@ func main() {
 func run() (err error) {
 	err = godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		return fmt.Errorf("load .env file: %w", err)
 	}
+
+	db.ConnectRedis()
+	defer db.CloseRedis()
+
+	stopExchangeRateUpdater := repository.ExchangeRateRepo.StartExchangeRateUpdater()
+	defer stopExchangeRateUpdater()
 
 	postgres, err := db.ConnectPostgres()
 	if err != nil {
@@ -33,8 +40,6 @@ func run() (err error) {
 	}()
 
 	repository.RoomRepo = repository.NewRoomRepository(postgres)
-	db.ConnectRedis()
-	defer db.CloseRedis()
 
 	return http.ListenAndServe(":8080", router.MainRouter())
 }

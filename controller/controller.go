@@ -2,8 +2,10 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"example.com/demo/model"
 	"example.com/demo/repository"
@@ -126,8 +128,10 @@ func GetRoomPrice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	price, err := repository.ExchangeRateRepo.ConvertPrice(room.Price, "IDR", currency)
+	pair := repository.CurrencyPair{Base: "IDR", Quote: strings.ToUpper(currency)}
+	price, err := repository.ExchangeRateRepo.ConvertPrice(room.Price, pair)
 	if err != nil {
+		fmt.Println("Error converting price:", err)
 		http.Error(w, "failed to convert currency", http.StatusInternalServerError)
 		return
 	}

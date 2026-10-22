@@ -20,3 +20,11 @@ type ExchangeRate struct {
 	Rate          float64   `json:"rate"`
 	LastUpdated   time.Time `json:"last_updated"`
 }
+
+type ExchangeRateV2 struct {
+	Date        string    `json:"date"`
+	Base        string    `json:"base"`
+	Quote       string    `json:"quote"`
+	Rate        float64   `json:"rate"`
+	LastUpdated time.Time `json:"last_updated"`
+}
