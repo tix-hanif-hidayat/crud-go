@@ -1,17 +1,24 @@
 package db
 
-import "github.com/redis/go-redis/v9"
+import (
+	"os"
 
-var Redis *redis.Client
+	"github.com/redis/go-redis/v9"
+)
 
-func ConnectRedis() {
-	Redis = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+func ConnectRedis() *redis.Client {
+	url := os.Getenv("REDIS_URL")
+	if url == "" {
+		url = "localhost:6379"
+	}
+
+	return redis.NewClient(&redis.Options{
+		Addr: url,
 	})
 }
 
-func CloseRedis() {
-	if Redis != nil {
-		_ = Redis.Close()
+func CloseRedis(client *redis.Client) {
+	if client != nil {
+		_ = client.Close()
 	}
 }

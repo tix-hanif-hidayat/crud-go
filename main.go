@@ -23,8 +23,9 @@ func run() (err error) {
 		return fmt.Errorf("load .env file: %w", err)
 	}
 
-	db.ConnectRedis()
-	defer db.CloseRedis()
+	redisClient := db.ConnectRedis()
+	defer db.CloseRedis(redisClient)
+	repository.ExchangeRateRepo = repository.NewExchangeRateRepository(redisClient)
 
 	stopExchangeRateUpdater := repository.ExchangeRateRepo.StartExchangeRateUpdater()
 	defer stopExchangeRateUpdater()

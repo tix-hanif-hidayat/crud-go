@@ -11,8 +11,8 @@ import (
 	"time"
 
 	config "example.com/demo/config"
-	"example.com/demo/db"
 	m "example.com/demo/model"
+	"github.com/redis/go-redis/v9"
 )
 
 type CurrencyPair struct {
@@ -27,13 +27,15 @@ func (p CurrencyPair) cacheKey() string {
 type ExchangeRateRepository struct {
 	mu    sync.RWMutex
 	rates map[string]m.ExchangeRateV2
+	redis *redis.Client
 }
 
-var ExchangeRateRepo = NewExchangeRateRepository()
+var ExchangeRateRepo *ExchangeRateRepository
 
-func NewExchangeRateRepository() *ExchangeRateRepository {
+func NewExchangeRateRepository(redisClient *redis.Client) *ExchangeRateRepository {
 	return &ExchangeRateRepository{
 		rates: make(map[string]m.ExchangeRateV2),
+		redis: redisClient,
 	}
 }
 
@@ -57,7 +59,7 @@ func (e *ExchangeRateRepository) updateExchangeRate(pair CurrencyPair) *m.Exchan
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if value, err := db.Redis.Get(ctx, exchangeKey).Result(); err == nil {
+	if value, err := e.redis.Get(ctx, exchangeKey).Result(); err == nil {
 		rateValue, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			log.Printf("failed to parse exchange rate value for %s: %v", exchangeKey, err)
@@ -108,7 +110,7 @@ func (e *ExchangeRateRepository) refreshExchangeRates() error {
 	if err := json.NewDecoder(resp.Body).Decode(&rates); err != nil {
 		return fmt.Errorf("decode exchange rates: %w", err)
 	}
-	if db.Redis == nil {
+	if e.redis == nil {
 		return fmt.Errorf("redis client is not initialized")
 	}
 
@@ -121,7 +123,7 @@ func (e *ExchangeRateRepository) refreshExchangeRates() error {
 		value := strconv.FormatFloat(rate.Rate, 'f', -1, 64)
 		expiration := 2 * config.REFRESH_EXCHANGE_RATE_INTERVAL
 
-		if err := db.Redis.Set(ctx, key, value, expiration).Err(); err != nil {
+		if err := e.redis.Set(ctx, key, value, expiration).Err(); err != nil {
 			return fmt.Errorf("cache exchange rate %s: %w", key, err)
 		}
 	}
