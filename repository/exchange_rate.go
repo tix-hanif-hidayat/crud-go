@@ -20,6 +20,11 @@ type CurrencyPair struct {
 	Quote string
 }
 
+type exchangeRateCache interface {
+	Get(ctx context.Context, key string) *redis.StringCmd
+	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
+}
+
 func (p CurrencyPair) cacheKey() string {
 	return fmt.Sprintf("fx:%s:%s", p.Base, p.Quote)
 }
@@ -27,12 +32,12 @@ func (p CurrencyPair) cacheKey() string {
 type ExchangeRateRepository struct {
 	mu    sync.RWMutex
 	rates map[string]m.ExchangeRateV2
-	redis *redis.Client
+	redis exchangeRateCache
 }
 
 var ExchangeRateRepo *ExchangeRateRepository
 
-func NewExchangeRateRepository(redisClient *redis.Client) *ExchangeRateRepository {
+func NewExchangeRateRepository(redisClient exchangeRateCache) *ExchangeRateRepository {
 	return &ExchangeRateRepository{
 		rates: make(map[string]m.ExchangeRateV2),
 		redis: redisClient,
